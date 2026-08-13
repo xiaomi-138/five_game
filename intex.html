@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>画境传真 - 互动画板测试</title>
+    <style>
+        /* 给画板加个漂亮的边框和背景 */
+        #gameCanvas {
+            border: 2px solid #333;
+            background-color: #f9f9f9;
+            cursor: crosshair; /* 鼠标变成十字星，更有画画的感觉 */
+        }
+        .controls { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>画境传真 (Pixel Whisper) - 互动画板测试</h1>
+    
+    <!-- 聊天发送区 -->
+    <div class="controls">
+        <input type="text" id="messageText" placeholder="输入要发送的消息..." autocomplete="off"/>
+        <button onclick="sendMessage()">发送文字</button>
+    </div>
+
+    <!-- 画板操作区 -->
+    <div class="controls">
+        <canvas id="gameCanvas" width="400" height="300"></canvas>
+        <br>
+        <button onclick="clearCanvas()">清空画板</button>
+        <button onclick="sendDrawing()">发送画作 🚀</button>
+    </div>
+    
+    <ul id="messages" style="list-style-type: none; padding-left: 0;">
+        <!-- 接收到的消息和图片会显示在这里 -->
+    </ul>
+
+    <script>
+       var ws = new WebSocket("wss://https://b5eeecf106c435.lhr.life/ws");
+        var messages = document.getElementById('messages');
+        
+        // --- WebSocket 状态处理 ---
+        ws.onopen = function() {
+            addMessage("🟢 【系统】已成功连接到游戏大厅！", "green");
+        };
+
+        ws.onclose = function() {
+            addMessage("🔴 【系统】连接失败！服务器是不是关啦？", "red");
+        };
+
+        // 接收消息的核心逻辑：判断是文字还是画作
+        ws.onmessage = function(event) {
+            var data = event.data;
+            // 巧用前缀来判断接收到的是不是图片数据
+            if (data.startsWith("data:image")) {
+                var li = document.createElement('li');
+                li.innerHTML = "🖼️ <b>收到一幅画作：</b><br><img src='" + data + "' style='max-width: 300px; border: 1px solid #ccc; margin-top: 5px;'/>";
+                messages.appendChild(li);
+            } else {
+                addMessage("💬 " + data);
+            }
+        };
+
+        // --- 画板核心功能 ---
+        var canvas = document.getElementById('gameCanvas');
+        var ctx = canvas.getContext('2d');
+        var isDrawing = false;
+
+        // 1. 鼠标按下，准备画画
+        canvas.onmousedown = function(e) {
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(e.offsetX, e.offsetY);
+        };
+
+        // 2. 鼠标移动，画出线条
+        canvas.onmousemove = function(e) {
+            if (isDrawing) {
+                ctx.lineTo(e.offsetX, e.offsetY);
+                ctx.stroke(); // 上色
+            }
+        };
+
+        // 3. 鼠标松开，停止画画
+        canvas.onmouseup = function() {
+            isDrawing = false;
+        };
+
+        // 清空画板
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // --- 发送功能 ---
+        function sendMessage() {
+            var input = document.getElementById("messageText");
+            if (input.value.trim() !== "") {
+                ws.send(input.value);
+                input.value = ''; 
+            }
+        }
+
+        function sendDrawing() {
+            // 将画板内容转化为 Base64 图片代码
+            var imageData = canvas.toDataURL("image/png");
+            // 通过 WebSocket 发送出去！
+            ws.send(imageData);
+            // 发送完顺手清空画板
+            clearCanvas();
+        }
+
+        // 辅助函数：把文字加到列表里
+        function addMessage(text, color = "black") {
+            var li = document.createElement('li');
+            li.style.color = color;
+            li.textContent = text;
+            messages.appendChild(li);
+        }
+    </script>
+</body>
+</html>
