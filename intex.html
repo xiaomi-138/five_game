@@ -34,7 +34,7 @@
     </ul>
 
     <script>
-       var ws = new WebSocket("wss://https://b5eeecf106c435.lhr.life/ws");
+       var ws = new WebSocket("wss://" + window.location.host + "/ws");
         var messages = document.getElementById('messages');
         
         // --- WebSocket 状态处理 ---
